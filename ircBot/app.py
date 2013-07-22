@@ -68,33 +68,26 @@ class IrcNullMessage(Exception):
 
 class Irc(object):
     '''Provides a basic interface to an IRC server.'''
-    def __init__(self, settings):
-        self.server   = settings['server']
-        self.nick     = settings['nick']
-        self.realname = settings['realname']
-        self.port     = settings['port']
-        self.ssl      = settings['ssl']
-        self.channels = settings['channels']
+    _conn = None
 
-        self.line     = {'prefix': '',
-                         'command': '',
-                         'args': ['', '']}
+    def __init__(self, settings):
+        self.nick = settings.pop('nick')
+        self.settings = settings
         self.lines    = queue.Queue()
 
-        self._connect() 
-        self._event_loop()
+        self._connect()
 
     def _create_connection(self):
         transport = SslTcp if self.ssl else Tcp
         return transport(self.server, self.port)
 
     def _connect(self):
-        self.conn = self._create_connection()
-        gevent.spawn(self.conn.connect)
-        self.cmd('USER', (self.nick, ' 3 ', '* ', self.realname))
+        self._conn = self._create_connection()
+        self._conn.connect()
+        self.cmd('USER', (self.nick, ' 3 ', '* ', self.settings["realname"]))
 
     def _disconnect(self):
-        self.conn.disconnect()
+        self._conn.disconnect()
 
     def _parsemsg(self, s):
         '''
@@ -116,7 +109,7 @@ class Irc(object):
         command = args.pop(0)
         return prefix, command, args
 
-    def _event_loop(self):
+    def serve(self):
         '''
         The main event loop.
 
@@ -127,15 +120,18 @@ class Irc(object):
             line = self.conn.iqueue.get()
             logger.info(line)
             prefix, command, args = self._parsemsg(line)
-            self.line = {'prefix': prefix, 'command': command, 'args': args}
-            self.lines.put(self.line)
+
+            line = {'prefix': prefix, 'command': command, 'args': args}
+            self.lines.put(line)
+
             if command == '433': # nick in use
                 self.nick = self.nick + '_'
 
             if command == 'PING':
                 self.cmd('PONG', args)
+
             if command == '001':
-                self._join_chans(self.channels)
+                self._join_chans(self.settings["channels"])
 
     @property
     def nick(self):
@@ -144,7 +140,7 @@ class Irc(object):
     @nick.setter
     def nick(self, value):
         self._nick = value
-        self,cmd('NICK', self._nick)
+        self,cmd('NICK', self.nick)
 
     def _join_chans(self, channels):
         return [self.cmd('JOIN', channel) for channel in channels]
@@ -163,7 +159,7 @@ class Irc(object):
 
     def _send(self, s):
         logger.info(s)
-        self.conn.oqueue.put(s)
+        self._conn.oqueue.put(s)
 
 
 if __name__ == '__main__':
@@ -178,6 +174,6 @@ if __name__ == '__main__':
         'channels': ['#linuxandsci'],
         }
 
-    bot = lambda : Irc(SETTINGS)
-    jobs = [gevent.spawn(bot)]
+    bot = Irc(SETTINGS)
+    jobs = [gevent.spawn(bot.serve)]
     gevent.joinall(jobs)
