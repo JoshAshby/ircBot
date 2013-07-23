@@ -14,21 +14,27 @@ from log import setupLog
 import config as c
 
 
+class RegularBot(ChannelBot):
+    def processMsg(self, who, said):
+        logger.debug(who + " : " + said)
+
 class JoshBot(ChannelBot):
     personal = True
     def processMsg(self, who, said):
-        logger.info("Hi Josh. " + said)
+        logger.debug("Hi Josh! " + said)
+        self.reply("Hi Josh! " + said)
 
 
 if __name__ == '__main__':
     logger = setupLog()
 
     connection = IrcConnector()
+    connection.run()
 
-    gevent.spawn(connection.run)
+    bots = [
+      RegularBot("#josh-test"),
+      JoshBot("JoshAshby-SFE")
+    ]
 
-    testBot = ChannelBot("#josh-Test")
-    anotherBot = JoshBot("JoshAshby-SFE")
-
-    dispatcher = BotDispatch([testBot, anotherBot], connection)
+    dispatcher = BotDispatch(bots, connection)
     dispatcher.dispatch()

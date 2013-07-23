@@ -12,7 +12,7 @@ def setupLog():
     formatter = logging.Formatter("""%(asctime)s - %(name)s - %(levelname)s
     %(message)s""")
 
-    logger = logging.getLogger("app")
+    logger = logging.getLogger("irc")
     logger.setLevel(level)
 
     fh = logging.FileHandler("logz.log")

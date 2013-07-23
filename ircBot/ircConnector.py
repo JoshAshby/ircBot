@@ -7,7 +7,7 @@ from tcp import Tcp
 import ircExceptions as exc
 
 import logging
-logger = logging.getLogger("irc")
+logger = logging.getLogger("irc.connector")
 
 import config as c
 
@@ -16,11 +16,12 @@ class IrcConnector(object):
     _conn = None
 
     def __init__(self):
-        self._nick     = c.nick
-        self._channels = c.channels
-        self._server   = c.server
-        self._port     = c.port
-        self._queue = queue.Queue()
+        self._nick        = c.nick
+        self._channels    = c.channels
+        self._server      = c.server
+        self._port        = c.port
+        self._queue       = queue.Queue()
+        self._outputQueue = queue.Queue()
 
         self._connect()
 
@@ -39,6 +40,9 @@ class IrcConnector(object):
         self._connect()
 
     def run(self):
+        jobs = [gevent.spawn(self.watch), gevent.spawn(self.send)]
+
+    def watch(self):
         while True:
             line = self._conn.iqueue.get()
             if line[:4] == "ERROR":
@@ -72,7 +76,6 @@ class IrcConnector(object):
                         "who": name,
                         "said": said}
 
-                self._queue.put(data)
                 logger.debug(data)
 
                 if command == '433': # nick in use
@@ -92,12 +95,18 @@ class IrcConnector(object):
                     self._reconnect()
 
                 elif command == 'PRIVMSG':
-                    if channel[0] != "#":
-                        channel = name
-                    self.msg(channel, name + ": "+str(line))
+                    self._queue.put(data)
+                    #if channel[0] != "#":
+                        #channel = name
+                    #self.msg(channel, name + ": "+str(line))
 
             except exc.IrcNullMessage:
                 logger.debug("Null message")
+
+    def send(self):
+        while True:
+            what = self._outputQueue.get()
+            self.reply(what["msg"], what["channel"])
 
     @property
     def nick(self):
@@ -117,8 +126,8 @@ class IrcConnector(object):
         else:
             self.cmd('JOIN', channels)
 
-    def reply(self, msg):
-        self.cmd('PRIVMSG', (self._channel + ' :' + msg))
+    def reply(self, msg, channel):
+        self.cmd('PRIVMSG', (channel + ' :' + msg))
 
     def msg(self, who, msg):
         self.cmd('PRIVMSG', (who + " :" + msg))

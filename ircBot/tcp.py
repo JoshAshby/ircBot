@@ -3,7 +3,7 @@ import gevent
 from gevent import socket, queue
 
 import logging
-logger = logging.getLogger("tcp")
+logger = logging.getLogger("irc.tcp")
 
 
 class Tcp(object):

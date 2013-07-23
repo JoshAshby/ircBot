@@ -1,5 +1,5 @@
 import logging
-logger = logging.getLogger("channelBot")
+logger = logging.getLogger("irc.bot")
 
 from gevent import queue
 import config as c
@@ -25,11 +25,11 @@ class ChannelBot(object):
                 channel = what["channel"]
 
             if channel.lower() == self.channel.lower():
-                logger.debug("In " + self.channel + " " + who + " said: " + said)
+                logger.debug("In " + self.channel + " " + what["who"] + " said: " + what["said"])
                 self.processMsg(who=what["who"], said=what["said"])
 
     def processMsg(self, who, said):
         pass
 
-    def reply(self, msg, target=""):
-        pass
+    def reply(self, msg, action="PRIVMSG"):
+      self._sendMsgQueue.put({"cmd": action, "msg": msg, "channel": self.channel})
