@@ -35,18 +35,18 @@ class Tcp(object):
 
     def _recv_loop(self):
         while True:
-            logger.debug("recv")
             data = self._socket.recv(4096)
             self._ibuffer += data
             while '\r\n' in self._ibuffer:
                 line, self._ibuffer = self._ibuffer.split('\r\n', 1)
                 self.iqueue.put(line)
+            logger.debug("recv - " + line)
 
     def _send_loop(self):
         while True:
-            logger.debug("send")
             line = self.oqueue.get().splitlines()[0][:500]
             self._obuffer += line.encode('utf-8', 'replace') + '\r\n'
             while self._obuffer:
                 sent = self._socket.send(self._obuffer)
                 self._obuffer = self._obuffer[sent:]
+            logger.debug("send - " + line)
