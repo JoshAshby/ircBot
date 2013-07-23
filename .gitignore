@@ -39,3 +39,6 @@ nosetests.xml
 
 # virtualenv stuffz
 virt/
+
+# logs!!!
+*.log
