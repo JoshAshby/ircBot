@@ -9,82 +9,26 @@ import gevent
 from gevent import socket, queue
 from gevent.ssl import wrap_socket
 
-# BAD LEVEL 9999999999 BUT FUCKIT
 from log import setupLog
-
-
-class Tcp(object):
-    '''Handles TCP connections, `timeout` is in secs.'''
-    def __init__(self, host, port, timeout=300):
-        self._ibuffer = ''
-        self._obuffer = ''
-        self.iqueue = queue.Queue()
-        self.oqueue = queue.Queue()
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self._socket = self._create_socket()
-
-    def _create_socket(self):
-        return socket.socket()
-
-    def connect(self):
-        self._socket.connect((self.host, self.port))
-        try:
-            jobs = [gevent.spawn(self._recv_loop), gevent.spawn(self._send_loop)]
-            gevent.joinall(jobs)
-        finally:
-            gevent.killall(jobs)
-
-    def disconnect(self):
-        self._socket.close()
-
-    def _recv_loop(self):
-        while True:
-            data = self._socket.recv(4096)
-            self._ibuffer += data
-            while '\r\n' in self._ibuffer:
-                line, self._ibuffer = self._ibuffer.split('\r\n', 1)
-                self.iqueue.put(line)
-
-    def _send_loop(self):
-        while True:
-            line = self.oqueue.get().splitlines()[0][:500]
-            self._obuffer += line.encode('utf-8', 'replace') + '\r\n'
-            while self._obuffer:
-                sent = self._socket.send(self._obuffer)
-                self._obuffer = self._obuffer[sent:]
-
-
-class SslTcp(Tcp):
-    '''SSL wrapper for TCP connections.'''
-    def _create_socket(self):
-        return wrap_socket(Tcp._create_socket(self), server_side=False)
-
-
-class IrcNullMessage(Exception):
-    pass
+from tcp import Tcp
+import ircExceptions as exc
 
 
 class Irc(object):
     '''Provides a basic interface to an IRC server.'''
     _conn = None
 
-    def __init__(self, settings):
-        self.nick = settings.pop('nick')
-        self.settings = settings
+    def __init__(self, nick, server, port, channel):
+        self._nick    = nick
+        self.channel  = channel
         self.lines    = queue.Queue()
+        logger.info("Starting up...")
 
-        self._connect()
+        self._conn = Tcp(server, port)
+        gevent.spawn(self._conn.connect)
 
-    def _create_connection(self):
-        transport = SslTcp if self.ssl else Tcp
-        return transport(self.server, self.port)
-
-    def _connect(self):
-        self._conn = self._create_connection()
-        self._conn.connect()
-        self.cmd('USER', (self.nick, ' 3 ', '* ', self.settings["realname"]))
+        logger.info("Connection started, finishing auth...")
+        self.cmd('USER', (self.nick, ' 3 ', '* ', "WAT"))
 
     def _disconnect(self):
         self._conn.disconnect()
@@ -97,7 +41,7 @@ class Irc(object):
         prefix = ''
         trailing = []
         if not s:
-            raise IrcNullMessage('Received an empty line from the server.')
+            raise exc.IrcNullMessage('Received an empty line from the server.')
         if s[0] == ':':
             prefix, s = s[1:].split(' ', 1)
         if s.find(' :') != -1:
@@ -117,21 +61,26 @@ class Irc(object):
         are put in the object's event queue, `self.events`.
         '''
         while True:
-            line = self.conn.iqueue.get()
-            logger.info(line)
-            prefix, command, args = self._parsemsg(line)
+            logger.debug("here")
+            line = self._conn.iqueue.get()
+            try:
+                prefix, command, args = self._parsemsg(line)
 
-            line = {'prefix': prefix, 'command': command, 'args': args}
-            self.lines.put(line)
+                line = {'prefix': prefix, 'command': command, 'args': args}
+                self.lines.put(line)
+                logger.debug(line)
 
-            if command == '433': # nick in use
-                self.nick = self.nick + '_'
+                if command == '433': # nick in use
+                    self.nick = self.nick + '_'
 
-            if command == 'PING':
-                self.cmd('PONG', args)
+                if command == 'PING':
+                    self.cmd('PONG', args)
 
-            if command == '001':
-                self._join_chans(self.settings["channels"])
+                if command == '001':
+                    self.cmd('JOIN', self.channel)
+
+            except exc.IrcNullMessage:
+                logger.debug("Null")
 
     @property
     def nick(self):
@@ -140,10 +89,7 @@ class Irc(object):
     @nick.setter
     def nick(self, value):
         self._nick = value
-        self,cmd('NICK', self.nick)
-
-    def _join_chans(self, channels):
-        return [self.cmd('JOIN', channel) for channel in channels]
+        self.cmd('NICK', self.nick)
 
     def reply(self, prefix, msg):
         self.msg(prefix.split('!')[0], msg)
@@ -153,27 +99,17 @@ class Irc(object):
 
     def cmd(self, command, args, prefix=None):
         if prefix is not None:
-            self._send(prefix + command + ' ' + ''.join(args))
+            s = prefix + command + ' ' + ''.join(args)
         else:
-            self._send(command + ' ' + ''.join(args))
+            s = command + ' ' + ''.join(args)
 
-    def _send(self, s):
-        logger.info(s)
+        logger.debug(s)
         self._conn.oqueue.put(s)
 
 
 if __name__ == '__main__':
     logger = setupLog()
 
-    SETTINGS = {
-        'server': 'irc.freenode.net',
-        'port': 6697,
-        'ssl': True,
-        'nick': 'bot',
-        'realname': 'JoshBot',
-        'channels': ['#linuxandsci'],
-        }
-
-    bot = Irc(SETTINGS)
-    jobs = [gevent.spawn(bot.serve)]
-    gevent.joinall(jobs)
+    bot = Irc('JoshAshby', server='irc.freenode.net', port=6667, channel="#linuxandsci")
+    job = gevent.spawn(bot.serve)
+    job.join()

@@ -1,0 +1,2 @@
+class IrcNullMessage(Exception):
+    pass

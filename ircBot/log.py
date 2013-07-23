@@ -1,12 +1,12 @@
 import logging
-
+import config as c
 
 def setupLog():
     """
     Sets up the main logger for the daemon
     """
     level = logging.WARNING
-    if debug:
+    if c.debug:
             level = logging.DEBUG
 
     formatter = logging.Formatter("""%(asctime)s - %(name)s - %(levelname)s
@@ -21,7 +21,7 @@ def setupLog():
     logger.addHandler(fh)
 
     # Log to the console if we're in debug mode
-    if debug:
+    if c.debug:
         try:
             ch = logging.StreamHandler()
             ch.setLevel(level)
