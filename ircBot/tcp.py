@@ -22,7 +22,6 @@ class Tcp(object):
         return socket.socket()
 
     def connect(self):
-        logger.debug("Connecting...")
         self._socket.connect((self.host, self.port))
         try:
             jobs = [gevent.spawn(self._recv_loop), gevent.spawn(self._send_loop)]
@@ -40,7 +39,7 @@ class Tcp(object):
             while '\r\n' in self._ibuffer:
                 line, self._ibuffer = self._ibuffer.split('\r\n', 1)
                 self.iqueue.put(line)
-            logger.debug("recv - " + line)
+            logger.debug("recv: " + line)
 
     def _send_loop(self):
         while True:
@@ -49,4 +48,4 @@ class Tcp(object):
             while self._obuffer:
                 sent = self._socket.send(self._obuffer)
                 self._obuffer = self._obuffer[sent:]
-            logger.debug("send - " + line)
+            logger.debug("send: " + line)

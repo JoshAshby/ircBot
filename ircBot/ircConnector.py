@@ -9,17 +9,18 @@ import ircExceptions as exc
 import logging
 logger = logging.getLogger("irc")
 
+import config as c
+
 
 class IrcConnector(object):
     _conn = None
 
-    def __init__(self, nick, server, port, channels):
-        self._nick     = nick
-        self._channels = channels
-        self._server   = server
-        self._port     = port
+    def __init__(self):
+        self._nick     = c.nick
+        self._channels = c.channels
+        self._server   = c.server
+        self._port     = c.port
         self._queue = queue.Queue()
-        logger.info("Starting up...")
 
         self._connect()
 
@@ -27,7 +28,6 @@ class IrcConnector(object):
         self._conn = Tcp(self._server, self._port)
         gevent.spawn(self._conn.connect)
 
-        logger.info("Connection started, finishing auth...")
         self.nick = self._nick
         self.cmd('USER', (self.nick, ' 3 ', '* ', "Wat Who Where"))
 
@@ -54,8 +54,6 @@ class IrcConnector(object):
                 if s[0] == ':':
                     prefix, s = s[1:].split(' ', 1)
                     name = prefix.split('!~')[0]
-
-                logger.debug("said: " + s)
 
                 if s.find(' :') != -1:
                     s, trailing = s.split(' :', 1)
