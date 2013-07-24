@@ -40,7 +40,11 @@ class ChannelBot(object):
 
     def searchCmds(self):
         if self.said[0] == self.cmdPrefix:
-            cmd, action = self.said[1:].split(" ", 1)
+            try:
+                cmd, action = self.said[1:].split(" ", 1)
+            except:
+                cmd = self.said[1:]
+                action = None
 
             self.runCmd(cmd, action)
 
@@ -49,6 +53,11 @@ class ChannelBot(object):
 
     def processMsg(self):
         pass
+
+    def sendCmd(self, cmd, msg):
+        self._sendMsgQueue({"msg": msg,
+                            "channel": self.channel,
+                            "action": cmd})
 
     def reply(self, msg):
       self._sendMsgQueue.put({"msg": msg,

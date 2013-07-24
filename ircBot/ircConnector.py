@@ -96,9 +96,6 @@ class IrcConnector(object):
 
                 elif command == 'PRIVMSG':
                     self._queue.put(data)
-                    #if channel[0] != "#":
-                        #channel = name
-                    #self.msg(channel, name + ": "+str(line))
 
             except exc.IrcNullMessage:
                 logger.debug("Null message")
@@ -106,7 +103,10 @@ class IrcConnector(object):
     def send(self):
         while True:
             what = self._outputQueue.get()
-            self.reply(what["msg"], what["channel"])
+            if "action" not in what:
+                self.reply(what["msg"], what["channel"])
+            else:
+                self.cmd(what["action"], (what["channel"] + " :" + what["msg"]))
 
     @property
     def nick(self):
