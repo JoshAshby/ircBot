@@ -1,6 +1,7 @@
 import gevent
 
 from gevent import socket, queue
+from urllib import unquote
 
 import logging
 logger = logging.getLogger("irc.tcp")
@@ -44,7 +45,11 @@ class Tcp(object):
     def _send_loop(self):
         while True:
             line = self.oqueue.get().splitlines()[0][:500]
-            self._obuffer += line.encode('utf-8', 'replace') + '\r\n'
+            try:
+                self._obuffer += line.encode('ascii', 'backslashreplace') + '\r\n'
+            except UnicodeDecodeError:
+                self._obuffer += line + "\r\n"
+
             while self._obuffer:
                 sent = self._socket.send(self._obuffer)
                 self._obuffer = self._obuffer[sent:]

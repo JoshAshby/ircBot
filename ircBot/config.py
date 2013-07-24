@@ -1,6 +1,6 @@
 debug = True
 
-nick = "JoshAshby"
+nick = "transientBot"
 server = "irc.freenode.net"
 port = 6667
 

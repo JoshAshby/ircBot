@@ -11,6 +11,9 @@ class ChannelBot(object):
     commands  = False
     cmdPrefix =  "!"
 
+    admins = []
+    adminCmds = []
+
     def __init__(self, channel):
         self.channel = channel
         self._msgQueue = queue.Queue()
@@ -46,7 +49,11 @@ class ChannelBot(object):
                 cmd = self.said[1:]
                 action = None
 
-            self.runCmd(cmd, action)
+            if cmd in self.adminCmds and self.who not in self.admins:
+                self.replyTo(self.who, "You can't use this action! :P")
+                return
+            else:
+                self.runCmd(cmd, action)
 
     def runCmd(self, cmd, action):
         pass
