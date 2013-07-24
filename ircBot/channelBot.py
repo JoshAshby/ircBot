@@ -6,7 +6,10 @@ import config as c
 
 
 class ChannelBot(object):
-    personal = False
+    personal  = False
+
+    commands  = False
+    cmdPrefix =  "!"
 
     def __init__(self, channel):
         self.channel = channel
@@ -25,11 +28,32 @@ class ChannelBot(object):
                 channel = what["channel"]
 
             if channel.lower() == self.channel.lower():
-                logger.debug("In " + self.channel + " " + what["who"] + " said: " + what["said"])
-                self.processMsg(who=what["who"], said=what["said"])
+                self.who = what["who"]
+                self.said = what["said"]
 
-    def processMsg(self, who, said):
+                logger.debug("In " + self.channel + " " + self.who + " said: " + self.said)
+
+                if self.commands:
+                    self.searchCmds()
+
+                self.processMsg()
+
+    def searchCmds(self):
+        if self.said[0] == self.cmdPrefix:
+            cmd, action = self.said[1:].split(" ", 1)
+
+            self.runCmd(cmd, action)
+
+    def runCmd(self, cmd, action):
         pass
 
-    def reply(self, msg, action="PRIVMSG"):
-      self._sendMsgQueue.put({"cmd": action, "msg": msg, "channel": self.channel})
+    def processMsg(self):
+        pass
+
+    def reply(self, msg):
+      self._sendMsgQueue.put({"msg": msg,
+                              "channel": self.channel})
+
+    def replyTo(self, who, msg):
+        self._sendMsgQueue.put({"msg": who+": "+msg,
+                                "channel": self.channel})

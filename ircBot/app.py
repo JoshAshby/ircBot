@@ -15,8 +15,26 @@ import config as c
 
 
 class RegularBot(ChannelBot):
-    def processMsg(self, who, said):
-        logger.debug(who + " : " + said)
+    echo     = True
+    commands = True
+
+    def processMsg(self):
+        logger.debug(self.who + " : " + self.said)
+
+        if self.echo:
+            self.reply(self.who+": "+ self.said)
+
+    def runCmd(self, cmd, action):
+        if cmd == "echo" and self.who == "JoshAshby-SFE":
+            if action == "on":
+                self.echo = True
+
+            else:
+                self.echo = False
+
+        else:
+            self.replyTo(self.who, "You can't use this action! :P")
+
 
 class JoshBot(ChannelBot):
     personal = True
