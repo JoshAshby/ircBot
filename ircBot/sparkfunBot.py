@@ -1,3 +1,4 @@
+import config as c
 from channelBot import ChannelBot
 import re
 import requests
@@ -6,6 +7,10 @@ import urlparse
 import gdata.youtube
 import gdata.youtube.service
 yt = gdata.youtube.service.YouTubeService()
+yt.developer_key = c.GOOGLE_ID
+
+import pyimgur
+im = pyimgur.Imgur(c.IMGUR_CLIENT_ID)
 
 import logging
 logger = logging.getLogger("irc.sparkfunBot")
@@ -21,6 +26,7 @@ shortMatch    = ("binged.it",
                  "tinyurl.com",
                  "tr.im")
 youtubeMatch  = ("youtu.be", "youtube.com")
+imgurMatch    = ("imgur.com")
 
 
 class sparkfunBot(ChannelBot):
@@ -38,6 +44,7 @@ class sparkfunBot(ChannelBot):
             self.sparkfunURL(url)
             self.shortURL(url)
             self.youtubeURL(url)
+            self.imgurURL(url)
 
         if self.echo:
             self.replyTo(self.who, self.said)
@@ -45,7 +52,7 @@ class sparkfunBot(ChannelBot):
     def runCmd(self, cmd, action):
         if cmd == "author":
             self.reply("""JoshAshby 2013 <josh.ashby@sparkfun.com> \
-                Source code at: https://github.com/JoshAshby/ircBot""")
+Source code at: https://github.com/JoshAshby/ircBot""")
 
         elif cmd == "echo":
             if action == "on":
@@ -99,6 +106,17 @@ class sparkfunBot(ChannelBot):
 
             entry = yt.GetYouTubeVideoEntry(video_id=id)
             self.reply(entry.media.title.text + " [ %s ]" % urlparse.urlunparse(url))
+
+    def imgurURL(self, url):
+        if any(part in str(url.netloc) for part in imgurMatch):
+            id = url.path.split(".")[0]
+            returned = im.get_image(id)
+            reply = returned.title + " [ %s " % returned.link
+            if returned.is_nsfw:
+                reply += "NSFW "
+            reply += "]"
+            self.reply(reply)
+
 
 def getProduct(product):
     result = requests.get('http://www.sparkfun.com/products/' + product + '.json')
