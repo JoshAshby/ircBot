@@ -39,12 +39,15 @@ class sparkfunBot(ChannelBot):
     def processMsg(self):
         logger.debug(self.who + " : " + self.said)
 
-        url = self.saidHasURL()
-        if url is not None:
-            self.sparkfunURL(url)
-            self.shortURL(url)
-            self.youtubeURL(url)
-            self.imgurURL(url)
+        try:
+            url = self.saidHasURL()
+            if url is not None:
+                self.sparkfunURL(url)
+                self.shortURL(url)
+                self.youtubeURL(url)
+                self.imgurURL(url)
+        except:
+            pass
 
         if self.echo:
             self.replyTo(self.who, self.said)
@@ -111,11 +114,12 @@ Source code at: https://github.com/JoshAshby/ircBot""")
         if any(part in str(url.netloc) for part in imgurMatch):
             id = url.path.split(".")[0]
             returned = im.get_image(id)
-            reply = returned.title + " [ %s " % returned.link
-            if returned.is_nsfw:
-                reply += "NSFW "
-            reply += "]"
-            self.reply(reply)
+            if returned.title:
+                reply = "%s [ %s " % (returned.title, returned.link)
+                if returned.is_nsfw:
+                    reply += "NSFW "
+                reply += "]"
+                self.reply(reply)
 
 
 def getProduct(product):
