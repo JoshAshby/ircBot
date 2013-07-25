@@ -50,7 +50,7 @@ class ChannelBot(object):
                 action = None
 
             if cmd in self.adminCmds and self.who not in self.admins:
-                self.replyTo(self.who, "You can't use this action! :P")
+                self.replyTo(self.who, "You must construct additional pylons! =O")
                 return
             else:
                 self.runCmd(cmd, action)
